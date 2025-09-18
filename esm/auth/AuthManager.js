@@ -122,9 +122,10 @@ export class AuthManager {
             }, 10000);
 
             const handleMessage = (event) => {
-                console.log('[SDK-AuthManager] Message received:', {
+                console.log('[SDK-AuthManager] Message received from:', event.origin);
+                console.log('[SDK-AuthManager] Message data:', event.data);
+                console.log('[SDK-AuthManager] Message details:', {
                     origin: event.origin,
-                    data: event.data,
                     dataType: event.data?.type,
                     hasToken: !!event.data?.token,
                     hasUser: !!event.data?.user
@@ -178,17 +179,30 @@ export class AuthManager {
                 source: 'credit-system-sdk'
             };
 
-            console.log('[SDK-AuthManager] Sending credential request to parent:', {
+            console.log('\n📨 [SDK-AuthManager] SENDING CREDENTIAL REQUEST TO PARENT');
+            console.log('[SDK-AuthManager] Request details:', {
                 message: requestMessage,
                 targetOrigin,
-                'window.parent': window.parent,
-                'parent exists': !!window.parent
+                currentLocation: window.location.href,
+                parentLocation: 'Check parent console for response'
             });
 
             logger.info('Requesting credentials from parent window', { targetOrigin });
-            window.parent.postMessage(requestMessage, targetOrigin);
 
-            console.log('[SDK-AuthManager] Credential request sent, waiting for response...');
+            // Send the message
+            try {
+                window.parent.postMessage(requestMessage, targetOrigin);
+                console.log('✅ [SDK-AuthManager] Message sent successfully');
+            } catch (error) {
+                console.error('❌ [SDK-AuthManager] Failed to send message:', error);
+            }
+
+            console.log('[SDK-AuthManager] Now waiting for response...');
+            console.log('[SDK-AuthManager] Check PARENT window console for:');
+            console.log('[SDK-AuthManager]   - "[Parent] Received message from iframe"');
+            console.log('[SDK-AuthManager]   - "[Parent] Credential request detected"');
+            console.log('[SDK-AuthManager] If you don\'t see these, check CORS_ALLOWED_ORIGINS in parent .env');
+            console.log('\n');
         });
     }
     async authenticate(credentials) {
