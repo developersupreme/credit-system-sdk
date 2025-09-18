@@ -1,0 +1,42 @@
+{
+  "name": "credit-system-sdk",
+  "version": "1.0.0",
+  "description": "A JavaScript/TypeScript SDK for credit system management",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.js.map",
+    "index.d.ts",
+    "index.d.ts.map",
+    "api/**/*",
+    "auth/**/*",
+    "core/**/*",
+    "esm/**/*",
+    "types/**/*",
+    "utils/**/*"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/developersupreme/credit-system-sdk.git"
+  },
+  "keywords": [
+    "credit",
+    "system",
+    "sdk",
+    "api",
+    "client"
+  ],
+  "author": "developersupreme",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/developersupreme/credit-system-sdk/issues"
+  },
+  "homepage": "https://github.com/developersupreme/credit-system-sdk#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
