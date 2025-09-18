@@ -109,7 +109,7 @@ class AuthManager {
             throw utils_1.CreditError.validationError('Password is required');
         }
         try {
-            const response = await this.axiosInstance.post('/auth', credentials);
+            const response = await this.axiosInstance.post('/secure-credits/standalone/auth', credentials);
             if (!response.data.success || !response.data.data) {
                 throw utils_1.CreditError.authenticationFailed(response.data.message);
             }
