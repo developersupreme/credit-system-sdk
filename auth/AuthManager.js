@@ -110,10 +110,10 @@ class AuthManager {
         }
         try {
             const response = await this.axiosInstance.post('/standalone/auth', credentials);
-            if (!response.data.success || !response.data.data) {
-                throw utils_1.CreditError.authenticationFailed(response.data.message);
+            if (!response.data.success) {
+                throw utils_1.CreditError.authenticationFailed(response.data.message || 'Authentication failed');
             }
-            const { token, expires_at, user } = response.data.data;
+            const { token, expires_at, user } = response.data;
             this.setToken(token, new Date(expires_at), user);
             utils_1.logger.info('Authentication successful', { userId: user.id });
             return user;
