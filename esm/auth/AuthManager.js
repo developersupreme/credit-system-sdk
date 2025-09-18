@@ -61,46 +61,72 @@ export class AuthManager {
     }
     isInIframe() {
         try {
-            return window.self !== window.top;
+            const inIframe = window.self !== window.top;
+            logger.debug('Iframe detection:', { inIframe, windowSelf: window.self === window.top });
+            return inIframe;
         }
         catch (e) {
+            logger.debug('Iframe detection error, assuming iframe:', e);
             return true;
         }
     }
     async initIframeAuth() {
         return new Promise((resolve, reject) => {
+            logger.info('Starting iframe authentication process');
+
             const timeout = setTimeout(() => {
+                logger.error('Iframe auth timeout - no response from parent');
                 reject(CreditError.authenticationFailed('Timeout waiting for parent authentication'));
             }, 10000);
+
             const handleMessage = (event) => {
+                logger.debug('Received message in iframe:', {
+                    origin: event.origin,
+                    expectedOrigin: this.config.parentOrigin,
+                    messageType: event.data?.type,
+                    hasToken: !!event.data?.token
+                });
+
+                // If parentOrigin is not set, accept from any origin (less secure but more flexible)
                 if (this.config.parentOrigin && event.origin !== this.config.parentOrigin) {
                     logger.warn('Ignored message from unauthorized origin:', event.origin);
                     return;
                 }
+
                 const message = event.data;
-                if (message.type === MessageType.JWT_TOKEN) {
+                if (message.type === MessageType.JWT_TOKEN || message.type === 'JWT_TOKEN') {
                     clearTimeout(timeout);
                     window.removeEventListener('message', handleMessage);
-                    if (message.token && message.expiresAt && message.user) {
-                        this.setToken(message.token, new Date(message.expiresAt), message.user);
+
+                    if (message.token && message.user) {
+                        // Handle both expiresAt and expires_at formats
+                        const expiresAt = message.expiresAt || message.expires_at;
+                        this.setToken(message.token, expiresAt ? new Date(expiresAt) : null, message.user);
                         logger.info('Iframe authentication successful', { userId: message.user.id });
                         resolve();
                     }
                     else {
+                        logger.error('Invalid token data from parent:', message);
                         reject(CreditError.authenticationFailed('Invalid token data from parent'));
                     }
                 }
-                else if (message.type === MessageType.AUTHENTICATION_ERROR) {
+                else if (message.type === MessageType.AUTHENTICATION_ERROR || message.type === 'AUTHENTICATION_ERROR') {
                     clearTimeout(timeout);
                     window.removeEventListener('message', handleMessage);
+                    logger.error('Authentication error from parent:', message.error);
                     reject(CreditError.authenticationFailed(message.error || 'Authentication failed'));
                 }
             };
+
             window.addEventListener('message', handleMessage);
+
             // Request credentials from parent
-            if (this.config.parentOrigin) {
-                window.parent.postMessage({ type: MessageType.REQUEST_CREDENTIALS }, this.config.parentOrigin);
-            }
+            const targetOrigin = this.config.parentOrigin || '*';
+            logger.info('Requesting credentials from parent window', { targetOrigin });
+            window.parent.postMessage({
+                type: MessageType.REQUEST_CREDENTIALS,
+                source: 'credit-system-sdk'
+            }, targetOrigin);
         });
     }
     async authenticate(credentials) {
@@ -160,9 +186,17 @@ export class AuthManager {
         this.jwtToken = token;
         this.tokenExpiresAt = expiresAt;
         this.user = user;
-        if (this.config.autoRefreshToken !== false) {
+
+        logger.debug('Token set successfully', {
+            hasToken: !!token,
+            expiresAt: expiresAt?.toISOString(),
+            userId: user?.id
+        });
+
+        if (this.config.autoRefreshToken !== false && expiresAt) {
             this.scheduleTokenRefresh();
         }
+
         // Notify parent if in iframe
         if (this.isInIframe() && this.config.parentOrigin) {
             window.parent.postMessage({
