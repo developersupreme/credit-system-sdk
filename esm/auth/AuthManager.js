@@ -47,8 +47,15 @@ export class AuthManager {
             logger.debug('AuthManager already initialized');
             return;
         }
-        if (this.config.authMode === 'jwt' && this.isInIframe()) {
-            await this.initIframeAuth();
+        // Auto-detect iframe mode and initialize accordingly
+        if (this.isInIframe() && (this.config.authMode === 'jwt' || this.config.authMode === 'auto')) {
+            logger.info('Detected iframe environment, initializing iframe authentication');
+            try {
+                await this.initIframeAuth();
+            } catch (error) {
+                logger.warn('Iframe authentication failed, falling back to standalone mode', error);
+                // Don't throw, allow fallback to standalone mode
+            }
         }
         this.isInitialized = true;
     }
@@ -76,6 +83,7 @@ export class AuthManager {
                     window.removeEventListener('message', handleMessage);
                     if (message.token && message.expiresAt && message.user) {
                         this.setToken(message.token, new Date(message.expiresAt), message.user);
+                        logger.info('Iframe authentication successful', { userId: message.user.id });
                         resolve();
                     }
                     else {
@@ -131,7 +139,7 @@ export class AuthManager {
             }
             // Validate token with backend
             this.jwtToken = token;
-            const response = await this.axiosInstance.get('/validate');
+            const response = await this.axiosInstance.get('/standalone/validate');
             if (!response.data.success || !response.data.data) {
                 throw CreditError.authenticationFailed('Invalid token');
             }
@@ -188,7 +196,7 @@ export class AuthManager {
             throw CreditError.authenticationFailed('No token to refresh');
         }
         try {
-            const response = await this.axiosInstance.post('/refresh-token');
+            const response = await this.axiosInstance.post('/standalone/refresh-token');
             if (!response.data.success || !response.data.data) {
                 throw CreditError.authenticationFailed('Token refresh failed');
             }

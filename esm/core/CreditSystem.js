@@ -24,10 +24,14 @@ export class CreditSystem {
         this.setupErrorHandler();
     }
     normalizeConfig(config) {
+        // Auto-detect if in iframe and set appropriate mode
+        const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+        const defaultAuthMode = isInIframe ? 'jwt' : 'standalone';
+
         return {
             ...config,
             apiUrl: config.apiUrl.replace(/\/$/, ''), // Remove trailing slash
-            authMode: config.authMode || 'standalone',
+            authMode: config.authMode || defaultAuthMode,
             autoRefreshToken: config.autoRefreshToken !== false,
             tokenRefreshBuffer: config.tokenRefreshBuffer || 60000 // Default 1 minute
         };
@@ -105,6 +109,17 @@ export class CreditSystem {
         try {
             await this.authManager.init();
             this.initialized = true;
+
+            // If authenticated via iframe, trigger authenticated event
+            if (this.authManager.isAuthenticated()) {
+                const user = this.authManager.getUser();
+                if (user && this.eventHandlers.onAuthenticated) {
+                    this.eventHandlers.onAuthenticated(user);
+                }
+                // Fetch initial balance for iframe auth
+                this.refreshBalanceSilently();
+            }
+
             logger.info('CreditSystem initialized successfully');
         }
         catch (error) {
