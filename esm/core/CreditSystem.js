@@ -66,6 +66,15 @@ export class CreditSystem {
             parentOrigin: config.parentOrigin
         });
 
+        // PROMINENT MODE DISPLAY
+        console.log('\n' + '='.repeat(60));
+        console.log('🔐 CREDIT SYSTEM SDK - AUTHENTICATION MODE');
+        console.log('='.repeat(60));
+        console.log(`📍 ENVIRONMENT: ${isInIframe ? '🖼️  IFRAME (EMBEDDED)' : '🖥️  STANDALONE'}`);
+        console.log(`🔑 AUTH MODE: ${finalAuthMode === 'jwt' ? '🎫 JWT (PARENT TOKEN)' : '🔐 STANDALONE (EMAIL/PASSWORD)'}`);
+        console.log(`✅ RUNNING IN: *** ${finalAuthMode.toUpperCase()} MODE ***`);
+        console.log('='.repeat(60) + '\n');
+
         logger.info('CreditSystem configuration', {
             isInIframe,
             configuredAuthMode: config.authMode,

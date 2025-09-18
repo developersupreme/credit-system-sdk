@@ -67,16 +67,21 @@ export class AuthManager {
         // Auto-detect iframe mode and initialize accordingly
         if (inIframe && (this.config.authMode === 'jwt' || this.config.authMode === 'auto')) {
             logger.info('Detected iframe environment, initializing iframe authentication');
-            console.log('[SDK-AuthManager] Starting iframe authentication...');
+            console.log('\n🎯 [SDK-AuthManager] STARTING IFRAME AUTHENTICATION (JWT MODE) 🎯');
+            console.log('[SDK-AuthManager] Waiting for parent window to send JWT token...');
             try {
                 await this.initIframeAuth();
-                console.log('[SDK-AuthManager] Iframe authentication completed successfully');
+                console.log('✅ [SDK-AuthManager] IFRAME AUTHENTICATION SUCCESSFUL!');
+                console.log('[SDK-AuthManager] User authenticated via parent JWT token\n');
             } catch (error) {
                 logger.warn('Iframe authentication failed, falling back to standalone mode', error);
-                console.error('[SDK-AuthManager] Iframe authentication failed:', error);
+                console.error('❌ [SDK-AuthManager] IFRAME AUTHENTICATION FAILED:', error);
+                console.error('[SDK-AuthManager] User will need to login with email/password\n');
                 // Don't throw, allow fallback to standalone mode
             }
         } else {
+            console.log('\n🔐 [SDK-AuthManager] USING STANDALONE AUTHENTICATION MODE 🔐');
+            console.log('[SDK-AuthManager] User will need to login with email/password');
             console.log('[SDK-AuthManager] Not using iframe auth. Reason:', {
                 inIframe,
                 authMode: this.config.authMode
