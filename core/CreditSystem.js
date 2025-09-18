@@ -51,7 +51,15 @@ class CreditSystem {
         }
 
         const defaultAuthMode = isInIframe ? 'jwt' : 'standalone';
-        const finalAuthMode = config.authMode || defaultAuthMode;
+        let finalAuthMode = config.authMode || defaultAuthMode;
+
+        // IMPORTANT: Override authMode if we're in iframe but user specified standalone
+        if (isInIframe && config.authMode === 'standalone') {
+            console.warn('[SDK-CreditSystem] WARNING: Detected iframe environment but authMode is set to "standalone".');
+            console.warn('[SDK-CreditSystem] Overriding to "jwt" mode for iframe compatibility.');
+            console.warn('[SDK-CreditSystem] Remove authMode from config to use auto-detection.');
+            finalAuthMode = 'jwt'; // Force JWT mode in iframe
+        }
 
         console.log('[SDK-CreditSystem] Auth mode decision:', {
             isInIframe,

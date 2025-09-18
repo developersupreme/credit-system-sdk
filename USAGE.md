@@ -17,8 +17,10 @@ npm install developersupreme/credit-system-sdk
 const { CreditSystem } = require('credit-system-sdk');
 
 const creditSystem = new CreditSystem({
-  apiUrl: 'https://your-api-endpoint.com',
-  authMode: 'standalone' // or 'jwt' for iframe mode
+  apiUrl: 'https://your-api-endpoint.com'
+  // authMode is auto-detected: 'jwt' in iframe, 'standalone' otherwise
+  // authMode: 'jwt' // Explicitly set for iframe/embedded mode
+  // authMode: 'standalone' // Explicitly set for standalone mode
 });
 
 // Initialize the system
@@ -53,8 +55,8 @@ creditSystem.logout();
 import { CreditSystem } from 'credit-system-sdk';
 
 const creditSystem = new CreditSystem({
-  apiUrl: 'https://your-api-endpoint.com',
-  authMode: 'standalone'
+  apiUrl: 'https://your-api-endpoint.com'
+  // authMode is auto-detected (no need to specify)
 });
 
 // Initialize and login
@@ -89,7 +91,7 @@ import type {
 
 const config: CreditSystemConfig = {
   apiUrl: 'https://your-api-endpoint.com',
-  authMode: 'standalone',
+  // authMode is auto-detected: 'jwt' in iframe, 'standalone' otherwise
   autoRefreshToken: true, // Auto-refresh JWT tokens
   onBalanceUpdate: (balance) => {
     console.log('Balance updated:', balance);
@@ -145,8 +147,8 @@ import React, { useState, useEffect } from 'react';
 import { CreditSystem } from 'credit-system-sdk';
 
 const creditSystem = new CreditSystem({
-  apiUrl: process.env.REACT_APP_API_URL,
-  authMode: 'standalone'
+  apiUrl: process.env.REACT_APP_API_URL
+  // authMode is auto-detected based on environment
 });
 
 function CreditDashboard() {
@@ -254,7 +256,7 @@ import { CreditSystem } from 'credit-system-sdk';
 
 const creditSystem = new CreditSystem({
   apiUrl: process.env.REACT_APP_API_URL,
-  authMode: 'standalone',
+  // authMode is auto-detected
   autoRefreshToken: true
 });
 
@@ -391,7 +393,7 @@ export class CreditService {
   constructor() {
     this.creditSystem = new CreditSystem({
       apiUrl: environment.apiUrl,
-      authMode: 'standalone',
+      // authMode is auto-detected
       autoRefreshToken: true,
       onBalanceUpdate: (balance) => {
         this.balanceSubject.next(balance);
@@ -728,7 +730,7 @@ import { CreditSystem } from 'credit-system-sdk';
 
 const creditSystem = new CreditSystem({
   apiUrl: import.meta.env.VITE_API_URL,
-  authMode: 'standalone',
+  // authMode is auto-detected
   autoRefreshToken: true
 });
 
@@ -951,7 +953,7 @@ import { CreditSystem } from 'credit-system-sdk';
 // Create and configure credit system instance
 const creditSystem = new CreditSystem({
   apiUrl: process.env.VUE_APP_API_URL,
-  authMode: 'standalone',
+  // authMode is auto-detected
   autoRefreshToken: true
 });
 
