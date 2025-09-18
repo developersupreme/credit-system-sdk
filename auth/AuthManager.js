@@ -51,8 +51,7 @@ class AuthManager {
     async init() {
         console.log('[SDK-AuthManager] init() called', {
             isInitialized: this.isInitialized,
-            authMode: this.config.authMode,
-            parentOrigin: this.config.parentOrigin
+            authMode: this.config.authMode
         });
 
         if (this.isInitialized) {
@@ -61,156 +60,12 @@ class AuthManager {
             return;
         }
 
-        const inIframe = this.isInIframe();
-        console.log('[SDK-AuthManager] Iframe check result:', inIframe);
-        console.log('[SDK-AuthManager] Auth mode check:', {
-            configAuthMode: this.config.authMode,
-            isJWT: this.config.authMode === 'jwt',
-            isAuto: this.config.authMode === 'auto',
-            willUseIframeAuth: inIframe && (this.config.authMode === 'jwt' || this.config.authMode === 'auto')
-        });
-
-        // Auto-detect iframe mode and initialize accordingly
-        if (inIframe && (this.config.authMode === 'jwt' || this.config.authMode === 'auto')) {
-            utils_1.logger.info('Detected iframe environment, initializing iframe authentication');
-            console.log('\n🎯 [SDK-AuthManager] STARTING IFRAME AUTHENTICATION (JWT MODE) 🎯');
-            console.log('[SDK-AuthManager] Waiting for parent window to send JWT token...');
-            try {
-                await this.initIframeAuth();
-                console.log('✅ [SDK-AuthManager] IFRAME AUTHENTICATION SUCCESSFUL!');
-                console.log('[SDK-AuthManager] User authenticated via parent JWT token\n');
-            } catch (error) {
-                utils_1.logger.warn('Iframe authentication failed, falling back to standalone mode', error);
-                console.error('❌ [SDK-AuthManager] IFRAME AUTHENTICATION FAILED:', error);
-                console.error('[SDK-AuthManager] User will need to login with email/password\n');
-                // Don't throw, allow fallback to standalone mode
-            }
-        } else {
-            console.log('\n🔐 [SDK-AuthManager] USING STANDALONE AUTHENTICATION MODE 🔐');
-            console.log('[SDK-AuthManager] User will need to login with email/password');
-            console.log('[SDK-AuthManager] Not using iframe auth. Reason:', {
-                inIframe,
-                authMode: this.config.authMode
-            });
-        }
+        // SDK no longer handles iframe authentication - application should handle it
+        console.log('[SDK-AuthManager] Auth mode:', this.config.authMode);
         this.isInitialized = true;
         console.log('[SDK-AuthManager] Initialization complete');
     }
-    isInIframe() {
-        try {
-            const inIframe = window.self !== window.top;
-            console.log('[SDK-AuthManager] isInIframe() check:', {
-                'window.self': window.self,
-                'window.top': window.top,
-                'window.self !== window.top': inIframe,
-                'window.parent !== window': window.parent !== window,
-                'window.frameElement': window.frameElement
-            });
-            utils_1.logger.debug('Iframe detection:', { inIframe, windowSelf: window.self === window.top });
-            return inIframe;
-        }
-        catch (e) {
-            console.log('[SDK-AuthManager] Iframe detection error (cross-origin?), assuming iframe:', e.message);
-            utils_1.logger.debug('Iframe detection error, assuming iframe:', e);
-            return true;
-        }
-    }
-    async initIframeAuth() {
-        console.log('[SDK-AuthManager] initIframeAuth() started');
-        return new Promise((resolve, reject) => {
-            utils_1.logger.info('Starting iframe authentication process');
-            console.log('[SDK-AuthManager] Setting up message listener and timeout');
-
-            const timeout = setTimeout(() => {
-                console.error('[SDK-AuthManager] TIMEOUT: No response from parent after 10 seconds');
-                utils_1.logger.error('Iframe auth timeout - no response from parent');
-                reject(utils_1.CreditError.authenticationFailed('Timeout waiting for parent authentication'));
-            }, 10000);
-
-            const handleMessage = (event) => {
-                console.log('[SDK-AuthManager] Message received from:', event.origin);
-                console.log('[SDK-AuthManager] Message data:', event.data);
-                console.log('[SDK-AuthManager] Message details:', {
-                    origin: event.origin,
-                    dataType: event.data?.type,
-                    hasToken: !!event.data?.token,
-                    hasUser: !!event.data?.user
-                });
-
-                utils_1.logger.debug('Received message in iframe:', {
-                    origin: event.origin,
-                    expectedOrigin: this.config.parentOrigin,
-                    messageType: event.data?.type,
-                    hasToken: !!event.data?.token
-                });
-
-                // If parentOrigin is not set, accept from any origin (less secure but more flexible)
-                if (this.config.parentOrigin && event.origin !== this.config.parentOrigin) {
-                    utils_1.logger.warn('Ignored message from unauthorized origin:', event.origin);
-                    return;
-                }
-
-                const message = event.data;
-                if (message.type === types_1.MessageType.JWT_TOKEN || message.type === 'JWT_TOKEN') {
-                    clearTimeout(timeout);
-                    window.removeEventListener('message', handleMessage);
-
-                    if (message.token && message.user) {
-                        // Handle both expiresAt and expires_at formats
-                        const expiresAt = message.expiresAt || message.expires_at;
-                        this.setToken(message.token, expiresAt ? new Date(expiresAt) : null, message.user);
-                        utils_1.logger.info('Iframe authentication successful', { userId: message.user.id });
-                        resolve();
-                    }
-                    else {
-                        utils_1.logger.error('Invalid token data from parent:', message);
-                        reject(utils_1.CreditError.authenticationFailed('Invalid token data from parent'));
-                    }
-                }
-                else if (message.type === types_1.MessageType.AUTHENTICATION_ERROR || message.type === 'AUTHENTICATION_ERROR') {
-                    clearTimeout(timeout);
-                    window.removeEventListener('message', handleMessage);
-                    utils_1.logger.error('Authentication error from parent:', message.error);
-                    reject(utils_1.CreditError.authenticationFailed(message.error || 'Authentication failed'));
-                }
-            };
-
-            window.addEventListener('message', handleMessage);
-            console.log('[SDK-AuthManager] Message listener attached');
-
-            // Request credentials from parent
-            const targetOrigin = this.config.parentOrigin || '*';
-            const requestMessage = {
-                type: types_1.MessageType.REQUEST_CREDENTIALS,
-                source: 'credit-system-sdk'
-            };
-
-            console.log('\n📨 [SDK-AuthManager] SENDING CREDENTIAL REQUEST TO PARENT');
-            console.log('[SDK-AuthManager] Request details:', {
-                message: requestMessage,
-                targetOrigin,
-                currentLocation: window.location.href,
-                parentLocation: 'Check parent console for response'
-            });
-
-            utils_1.logger.info('Requesting credentials from parent window', { targetOrigin });
-
-            // Send the message
-            try {
-                window.parent.postMessage(requestMessage, targetOrigin);
-                console.log('✅ [SDK-AuthManager] Message sent successfully');
-            } catch (error) {
-                console.error('❌ [SDK-AuthManager] Failed to send message:', error);
-            }
-
-            console.log('[SDK-AuthManager] Now waiting for response...');
-            console.log('[SDK-AuthManager] Check PARENT window console for:');
-            console.log('[SDK-AuthManager]   - "[Parent] Received message from iframe"');
-            console.log('[SDK-AuthManager]   - "[Parent] Credential request detected"');
-            console.log('[SDK-AuthManager] If you don\'t see these, check CORS_ALLOWED_ORIGINS in parent .env');
-            console.log('\n');
-        });
-    }
+    // Removed iframe-related methods - application handles iframe detection and parent communication
     async authenticate(credentials) {
         if (!utils_1.Validators.validateEmail(credentials.email)) {
             throw utils_1.CreditError.validationError('Invalid email format');
@@ -279,13 +134,7 @@ class AuthManager {
             this.scheduleTokenRefresh();
         }
 
-        // Notify parent if in iframe
-        if (this.isInIframe() && this.config.parentOrigin) {
-            window.parent.postMessage({
-                type: types_1.MessageType.USER_CREDENTIALS,
-                user
-            }, this.config.parentOrigin);
-        }
+        // SDK no longer sends messages to parent - application handles communication
     }
     scheduleTokenRefresh() {
         if (this.refreshTimer) {

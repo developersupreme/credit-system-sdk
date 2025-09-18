@@ -34,52 +34,16 @@ class CreditSystem {
     normalizeConfig(config) {
         console.log('[SDK-CreditSystem] normalizeConfig() called');
 
-        // Auto-detect if in iframe and set appropriate mode
-        let isInIframe = false;
-        try {
-            isInIframe = typeof window !== 'undefined' && window.self !== window.top;
-            console.log('[SDK-CreditSystem] Iframe detection in normalizeConfig:', {
-                'typeof window': typeof window,
-                'window.self': typeof window !== 'undefined' ? window.self : 'N/A',
-                'window.top': typeof window !== 'undefined' ? window.top : 'N/A',
-                'isInIframe': isInIframe
-            });
-        } catch (e) {
-            // Cross-origin iframe, assume we're in iframe
-            console.log('[SDK-CreditSystem] Cross-origin iframe detected (error accessing window.top)');
-            isInIframe = true;
-        }
+        // SDK no longer auto-detects iframe - let the application handle it
+        const finalAuthMode = config.authMode || 'standalone';
 
-        const defaultAuthMode = isInIframe ? 'jwt' : 'standalone';
-        let finalAuthMode = config.authMode || defaultAuthMode;
-
-        // IMPORTANT: Override authMode if we're in iframe but user specified standalone
-        if (isInIframe && config.authMode === 'standalone') {
-            console.warn('[SDK-CreditSystem] WARNING: Detected iframe environment but authMode is set to "standalone".');
-            console.warn('[SDK-CreditSystem] Overriding to "jwt" mode for iframe compatibility.');
-            console.warn('[SDK-CreditSystem] Remove authMode from config to use auto-detection.');
-            finalAuthMode = 'jwt'; // Force JWT mode in iframe
-        }
-
-        console.log('[SDK-CreditSystem] Auth mode decision:', {
-            isInIframe,
+        console.log('[SDK-CreditSystem] Auth mode:', {
             userProvidedAuthMode: config.authMode,
-            defaultAuthMode,
             finalAuthMode,
             parentOrigin: config.parentOrigin
         });
 
-        // PROMINENT MODE DISPLAY
-        console.log('\n' + '='.repeat(60));
-        console.log('🔐 CREDIT SYSTEM SDK - AUTHENTICATION MODE');
-        console.log('='.repeat(60));
-        console.log(`📍 ENVIRONMENT: ${isInIframe ? '🖼️  IFRAME (EMBEDDED)' : '🖥️  STANDALONE'}`);
-        console.log(`🔑 AUTH MODE: ${finalAuthMode === 'jwt' ? '🎫 JWT (PARENT TOKEN)' : '🔐 STANDALONE (EMAIL/PASSWORD)'}`);
-        console.log(`✅ RUNNING IN: *** ${finalAuthMode.toUpperCase()} MODE ***`);
-        console.log('='.repeat(60) + '\n');
-
         utils_1.logger.info('CreditSystem configuration', {
-            isInIframe,
             configuredAuthMode: config.authMode,
             finalAuthMode,
             parentOrigin: config.parentOrigin
