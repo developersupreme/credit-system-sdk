@@ -7,6 +7,7 @@ const ApiClient_1 = require("../api/ApiClient");
 const utils_1 = require("../utils");
 class CreditSystem {
     constructor(config) {
+        console.log('[SDK-CreditSystem] Constructor called with config:', config);
         this.eventHandlers = {};
         this.balanceCache = null;
         this.balanceCacheExpiry = 30000; // 30 seconds
@@ -21,23 +22,44 @@ class CreditSystem {
         }, 1000);
         utils_1.Validators.validateConfig(config);
         this.config = this.normalizeConfig(config);
+        console.log('[SDK-CreditSystem] Normalized config:', this.config);
+
         this.authManager = new AuthManager_1.AuthManager(this.config);
         this.apiClient = new ApiClient_1.ApiClient(this.authManager.getAxiosInstance(), this.config.parentOrigin);
         this.setupEventListeners();
         this.setupErrorHandler();
+
+        console.log('[SDK-CreditSystem] CreditSystem instance created');
     }
     normalizeConfig(config) {
+        console.log('[SDK-CreditSystem] normalizeConfig() called');
+
         // Auto-detect if in iframe and set appropriate mode
         let isInIframe = false;
         try {
             isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+            console.log('[SDK-CreditSystem] Iframe detection in normalizeConfig:', {
+                'typeof window': typeof window,
+                'window.self': typeof window !== 'undefined' ? window.self : 'N/A',
+                'window.top': typeof window !== 'undefined' ? window.top : 'N/A',
+                'isInIframe': isInIframe
+            });
         } catch (e) {
             // Cross-origin iframe, assume we're in iframe
+            console.log('[SDK-CreditSystem] Cross-origin iframe detected (error accessing window.top)');
             isInIframe = true;
         }
 
         const defaultAuthMode = isInIframe ? 'jwt' : 'standalone';
         const finalAuthMode = config.authMode || defaultAuthMode;
+
+        console.log('[SDK-CreditSystem] Auth mode decision:', {
+            isInIframe,
+            userProvidedAuthMode: config.authMode,
+            defaultAuthMode,
+            finalAuthMode,
+            parentOrigin: config.parentOrigin
+        });
 
         utils_1.logger.info('CreditSystem configuration', {
             isInIframe,
@@ -134,27 +156,49 @@ class CreditSystem {
      * Must be called before using other methods
      */
     async init() {
+        console.log('[SDK-CreditSystem] init() called', {
+            alreadyInitialized: this.initialized,
+            authMode: this.config.authMode
+        });
+
         if (this.initialized) {
             utils_1.logger.debug('CreditSystem already initialized');
+            console.log('[SDK-CreditSystem] Already initialized, skipping');
             return;
         }
+
         try {
+            console.log('[SDK-CreditSystem] Calling authManager.init()...');
             await this.authManager.init();
+            console.log('[SDK-CreditSystem] authManager.init() completed');
+
             this.initialized = true;
 
+            // Check authentication status
+            const isAuth = this.authManager.isAuthenticated();
+            const user = this.authManager.getUser();
+            console.log('[SDK-CreditSystem] Post-init auth check:', {
+                isAuthenticated: isAuth,
+                hasUser: !!user,
+                userId: user?.id
+            });
+
             // If authenticated via iframe, trigger authenticated event
-            if (this.authManager.isAuthenticated()) {
-                const user = this.authManager.getUser();
+            if (isAuth) {
                 if (user && this.eventHandlers.onAuthenticated) {
+                    console.log('[SDK-CreditSystem] Triggering onAuthenticated event');
                     this.eventHandlers.onAuthenticated(user);
                 }
                 // Fetch initial balance for iframe auth
+                console.log('[SDK-CreditSystem] Fetching initial balance...');
                 this.refreshBalanceSilently();
             }
 
             utils_1.logger.info('CreditSystem initialized successfully');
+            console.log('[SDK-CreditSystem] Initialization complete');
         }
         catch (error) {
+            console.error('[SDK-CreditSystem] Initialization failed:', error);
             this.handleError(error);
             throw error;
         }

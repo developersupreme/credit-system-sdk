@@ -43,43 +43,88 @@ export class AuthManager {
         });
     }
     async init() {
+        console.log('[SDK-AuthManager] init() called', {
+            isInitialized: this.isInitialized,
+            authMode: this.config.authMode,
+            parentOrigin: this.config.parentOrigin
+        });
+
         if (this.isInitialized) {
             logger.debug('AuthManager already initialized');
+            console.log('[SDK-AuthManager] Already initialized, skipping');
             return;
         }
+
+        const inIframe = this.isInIframe();
+        console.log('[SDK-AuthManager] Iframe check result:', inIframe);
+        console.log('[SDK-AuthManager] Auth mode check:', {
+            configAuthMode: this.config.authMode,
+            isJWT: this.config.authMode === 'jwt',
+            isAuto: this.config.authMode === 'auto',
+            willUseIframeAuth: inIframe && (this.config.authMode === 'jwt' || this.config.authMode === 'auto')
+        });
+
         // Auto-detect iframe mode and initialize accordingly
-        if (this.isInIframe() && (this.config.authMode === 'jwt' || this.config.authMode === 'auto')) {
+        if (inIframe && (this.config.authMode === 'jwt' || this.config.authMode === 'auto')) {
             logger.info('Detected iframe environment, initializing iframe authentication');
+            console.log('[SDK-AuthManager] Starting iframe authentication...');
             try {
                 await this.initIframeAuth();
+                console.log('[SDK-AuthManager] Iframe authentication completed successfully');
             } catch (error) {
                 logger.warn('Iframe authentication failed, falling back to standalone mode', error);
+                console.error('[SDK-AuthManager] Iframe authentication failed:', error);
                 // Don't throw, allow fallback to standalone mode
             }
+        } else {
+            console.log('[SDK-AuthManager] Not using iframe auth. Reason:', {
+                inIframe,
+                authMode: this.config.authMode
+            });
         }
         this.isInitialized = true;
+        console.log('[SDK-AuthManager] Initialization complete');
     }
     isInIframe() {
         try {
             const inIframe = window.self !== window.top;
+            console.log('[SDK-AuthManager] isInIframe() check:', {
+                'window.self': window.self,
+                'window.top': window.top,
+                'window.self !== window.top': inIframe,
+                'window.parent !== window': window.parent !== window,
+                'window.frameElement': window.frameElement
+            });
             logger.debug('Iframe detection:', { inIframe, windowSelf: window.self === window.top });
             return inIframe;
         }
         catch (e) {
+            console.log('[SDK-AuthManager] Iframe detection error (cross-origin?), assuming iframe:', e.message);
             logger.debug('Iframe detection error, assuming iframe:', e);
             return true;
         }
     }
     async initIframeAuth() {
+        console.log('[SDK-AuthManager] initIframeAuth() started');
         return new Promise((resolve, reject) => {
             logger.info('Starting iframe authentication process');
+            console.log('[SDK-AuthManager] Setting up message listener and timeout');
 
             const timeout = setTimeout(() => {
+                console.error('[SDK-AuthManager] TIMEOUT: No response from parent after 10 seconds');
                 logger.error('Iframe auth timeout - no response from parent');
                 reject(CreditError.authenticationFailed('Timeout waiting for parent authentication'));
             }, 10000);
 
             const handleMessage = (event) => {
+                console.log('[SDK-AuthManager] Message received:', {
+                    origin: event.origin,
+                    data: event.data,
+                    dataType: event.data?.type,
+                    hasToken: !!event.data?.token,
+                    hasUser: !!event.data?.user
+                });
+
                 logger.debug('Received message in iframe:', {
                     origin: event.origin,
                     expectedOrigin: this.config.parentOrigin,
@@ -119,14 +164,26 @@ export class AuthManager {
             };
 
             window.addEventListener('message', handleMessage);
+            console.log('[SDK-AuthManager] Message listener attached');
 
             // Request credentials from parent
             const targetOrigin = this.config.parentOrigin || '*';
-            logger.info('Requesting credentials from parent window', { targetOrigin });
-            window.parent.postMessage({
+            const requestMessage = {
                 type: MessageType.REQUEST_CREDENTIALS,
                 source: 'credit-system-sdk'
-            }, targetOrigin);
+            };
+
+            console.log('[SDK-AuthManager] Sending credential request to parent:', {
+                message: requestMessage,
+                targetOrigin,
+                'window.parent': window.parent,
+                'parent exists': !!window.parent
+            });
+
+            logger.info('Requesting credentials from parent window', { targetOrigin });
+            window.parent.postMessage(requestMessage, targetOrigin);
+
+            console.log('[SDK-AuthManager] Credential request sent, waiting for response...');
         });
     }
     async authenticate(credentials) {
