@@ -290,6 +290,12 @@ class CreditSystem {
         return this.authManager.getUser();
     }
     /**
+     * Alias for getUser - get current authenticated user
+     */
+    getCurrentUser() {
+        return this.authManager.getUser();
+    }
+    /**
      * Get current credit balance
      */
     async getBalance(useCache = true) {
