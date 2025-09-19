@@ -40,6 +40,10 @@ export declare class CreditSystem {
      */
     loginWithToken(token: string): Promise<User>;
     /**
+     * Authenticate with an iframe JWT token (skips backend validation)
+     */
+    loginWithIframeToken(token: string, userData: User): Promise<User>;
+    /**
      * Log out the current user
      */
     logout(): void;

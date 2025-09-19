@@ -93,14 +93,24 @@ class AuthManager {
             throw utils_1.CreditError.networkError(error);
         }
     }
-    async authenticateWithToken(token) {
+    async authenticateWithToken(token, skipValidation = false) {
         try {
             const payload = (0, utils_1.parseJWT)(token);
             const expiresAt = new Date(payload.exp * 1000);
             if (utils_1.Validators.isTokenExpired(expiresAt)) {
                 throw utils_1.CreditError.tokenExpired();
             }
-            // Validate token with backend
+
+            // For iframe tokens, we can skip backend validation as they're already trusted from parent
+            if (skipValidation && payload.user) {
+                // Use the user data from JWT payload for iframe tokens
+                const user = payload.user;
+                this.setToken(token, expiresAt, user);
+                utils_1.logger.info('Token authentication successful (iframe mode)', { userId: user.id });
+                return user;
+            }
+
+            // Validate token with backend for standalone mode
             this.jwtToken = token;
             const response = await this.axiosInstance.get('/standalone/validate');
             if (!response.data.success || !response.data.data) {

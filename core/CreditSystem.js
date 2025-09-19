@@ -227,13 +227,42 @@ class CreditSystem {
     async loginWithToken(token) {
         this.ensureInitialized();
         try {
-            const user = await this.authManager.authenticateWithToken(token);
+            const user = await this.authManager.authenticateWithToken(token, false);
             if (this.eventHandlers.onAuthenticated) {
                 this.eventHandlers.onAuthenticated(user);
             }
             // Fetch initial balance
             this.refreshBalanceSilently();
             return user;
+        }
+        catch (error) {
+            this.handleError(error);
+            throw error;
+        }
+    }
+    /**
+     * Authenticate with an iframe JWT token (skips backend validation)
+     */
+    async loginWithIframeToken(token, userData) {
+        console.log('[SDK-CreditSystem] loginWithIframeToken() called');
+        this.ensureInitialized();
+        try {
+            // Parse the token to get expiry
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const expiresAt = new Date(payload.exp * 1000);
+
+            // Set the token directly without validation since it's from trusted parent
+            this.authManager.setToken(token, expiresAt, userData);
+
+            if (this.eventHandlers.onAuthenticated) {
+                this.eventHandlers.onAuthenticated(userData);
+            }
+
+            // Fetch initial balance
+            this.refreshBalanceSilently();
+
+            utils_1.logger.info('Iframe token authentication successful', { userId: userData.id });
+            return userData;
         }
         catch (error) {
             this.handleError(error);

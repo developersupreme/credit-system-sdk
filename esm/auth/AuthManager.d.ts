@@ -13,8 +13,8 @@ export declare class AuthManager {
     private isInIframe;
     private initIframeAuth;
     authenticate(credentials: AuthCredentials): Promise<User>;
-    authenticateWithToken(token: string): Promise<User>;
-    private setToken;
+    authenticateWithToken(token: string, skipValidation?: boolean): Promise<User>;
+    setToken(token: string, expiresAt: Date, user: User): void;
     private scheduleTokenRefresh;
     refreshToken(): Promise<void>;
     private handleTokenExpiry;
