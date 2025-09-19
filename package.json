@@ -32,7 +32,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublishOnly": "npm run build:check",
     "build:check": "node -e \"console.log('Build verified')\"",
-    "pack:local": "npm pack"
+    "pack:local": "npm pack",
+    "build:bundle": "webpack --config webpack.bundle.config.js",
+    "build:bundle:dev": "webpack --config webpack.bundle.config.js --mode development"
   },
   "repository": {
     "type": "git",
@@ -62,8 +64,8 @@
     "node": ">=14.0.0"
   },
   "peerDependencies": {
-    "react": ">=16.8.0",
     "angular": ">=2.0.0",
+    "react": ">=16.8.0",
     "vue": ">=2.0.0"
   },
   "peerDependenciesMeta": {
@@ -76,5 +78,13 @@
     "vue": {
       "optional": true
     }
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
+    "babel-loader": "^10.0.0",
+    "terser-webpack-plugin": "^5.3.14",
+    "webpack": "^5.101.3",
+    "webpack-cli": "^6.0.1"
   }
 }
