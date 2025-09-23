@@ -25,7 +25,7 @@ class CreditSystem {
         console.log('[SDK-CreditSystem] Normalized config:', this.config);
 
         this.authManager = new AuthManager_1.AuthManager(this.config);
-        this.apiClient = new ApiClient_1.ApiClient(this.authManager.getAxiosInstance(), this.config.parentOrigin);
+        this.apiClient = new ApiClient_1.ApiClient(this.authManager.getAxiosInstance(), this.config.parentOrigin, this.config.authMode);
         this.setupEventListeners();
         this.setupErrorHandler();
 

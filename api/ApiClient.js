@@ -4,14 +4,17 @@ exports.ApiClient = void 0;
 const types_1 = require("../types");
 const utils_1 = require("../utils");
 class ApiClient {
-    constructor(axiosInstance, parentOrigin) {
+    constructor(axiosInstance, parentOrigin, authMode) {
         this.axiosInstance = axiosInstance;
         this.parentOrigin = parentOrigin;
+        this.authMode = authMode || 'standalone';
+        // Determine API prefix based on auth mode
+        this.apiPrefix = this.authMode === 'jwt' ? '/secure-credits/iframe' : '/secure-credits/standalone';
     }
     async getBalance() {
         try {
             utils_1.logger.debug('Fetching balance...');
-            const response = await (0, utils_1.retry)(() => this.axiosInstance.get('/balance'), 3, 1000);
+            const response = await (0, utils_1.retry)(() => this.axiosInstance.get(`${this.apiPrefix}/balance`), 3, 1000);
             if (!response.data.success || response.data.data === undefined) {
                 throw utils_1.CreditError.fromApiResponse(response.data);
             }
@@ -38,7 +41,7 @@ class ApiClient {
         utils_1.Validators.validateSpendRequest(request);
         try {
             utils_1.logger.debug('Processing spend request:', request);
-            const response = await this.axiosInstance.post('/spend', request);
+            const response = await this.axiosInstance.post(`${this.apiPrefix}/spend`, request);
             if (!response.data.success || !response.data.data) {
                 throw utils_1.CreditError.fromApiResponse(response.data);
             }
@@ -78,7 +81,7 @@ class ApiClient {
         utils_1.Validators.validateAmount(request.amount);
         try {
             utils_1.logger.debug('Adding credits:', request);
-            const response = await this.axiosInstance.post('/add-credits', request);
+            const response = await this.axiosInstance.post(`${this.apiPrefix}/add`, request);
             if (!response.data.success || !response.data.data) {
                 throw utils_1.CreditError.fromApiResponse(response.data);
             }
@@ -124,7 +127,7 @@ class ApiClient {
             if (params?.endDate) {
                 queryParams.append('end_date', params.endDate.toISOString());
             }
-            const url = `/history${queryParams.toString() ? `?${queryParams}` : ''}`;
+            const url = `${this.apiPrefix}/history${queryParams.toString() ? `?${queryParams}` : ''}`;
             const response = await this.axiosInstance.get(url);
             if (!response.data.success || !response.data.data) {
                 throw utils_1.CreditError.fromApiResponse(response.data);
@@ -149,62 +152,17 @@ class ApiClient {
     async getTransaction(transactionId) {
         try {
             utils_1.logger.debug('Fetching transaction:', transactionId);
-            const response = await this.axiosInstance.get(`/transaction/${transactionId}`);
-            if (!response.data.success || !response.data.data) {
-                throw utils_1.CreditError.fromApiResponse(response.data);
-            }
-            const transaction = this.normalizeTransaction(response.data.data.transaction);
-            utils_1.logger.info('Transaction fetched:', transaction.id);
-            return transaction;
-        }
-        catch (error) {
-            if (error instanceof utils_1.CreditError) {
-                throw error;
-            }
-            if (error.response?.status === 404) {
-                throw utils_1.CreditError.validationError(`Transaction ${transactionId} not found`);
-            }
-            if (error.response?.data) {
-                throw utils_1.CreditError.fromApiResponse(error.response.data);
-            }
-            throw utils_1.CreditError.networkError(error);
+            // Note: This endpoint is not currently implemented in the API
+            // You can get transaction details from the history endpoint instead
+            throw new Error('getTransaction endpoint not available. Use getTransactionHistory() to retrieve transaction details.');
         }
     }
     async refund(transactionId, reason) {
         try {
             utils_1.logger.debug('Processing refund:', { transactionId, reason });
-            const response = await this.axiosInstance.post(`/refund/${transactionId}`, { reason });
-            if (!response.data.success || !response.data.data) {
-                throw utils_1.CreditError.fromApiResponse(response.data);
-            }
-            const transaction = this.normalizeTransaction(response.data.data.transaction);
-            // Notify parent if in iframe
-            this.notifyParent(types_1.MessageType.OPERATION_COMPLETE, {
-                operation: 'refund',
-                details: { transactionId, reason },
-                newBalance: response.data.data.new_balance
-            });
-            utils_1.logger.info('Refund successful:', {
-                transactionId: transaction.id,
-                amount: transaction.amount
-            });
-            return transaction;
-        }
-        catch (error) {
-            if (error instanceof utils_1.CreditError) {
-                throw error;
-            }
-            if (error.response?.status === 404) {
-                throw utils_1.CreditError.validationError(`Transaction ${transactionId} not found`);
-            }
-            if (error.response?.status === 400) {
-                const message = error.response.data?.message || error.response.data?.error;
-                throw utils_1.CreditError.validationError(message || 'Refund not allowed for this transaction');
-            }
-            if (error.response?.data) {
-                throw utils_1.CreditError.fromApiResponse(error.response.data);
-            }
-            throw utils_1.CreditError.networkError(error);
+            // Note: This endpoint is not currently implemented in the API
+            // Refunds should be handled through a different process
+            throw new Error('Refund endpoint not available. Please contact support for refund requests.');
         }
     }
     normalizeTransaction(transaction) {
