@@ -213,7 +213,7 @@ export class AuthManager {
             throw CreditError.validationError('Password is required');
         }
         try {
-            const response = await this.axiosInstance.post('/standalone/auth', credentials);
+            const response = await this.axiosInstance.post('/secure-credits/standalone/auth', credentials);
             if (!response.data.success) {
                 throw CreditError.authenticationFailed(response.data.message || 'Authentication failed');
             }
@@ -249,15 +249,12 @@ export class AuthManager {
                 return user;
             }
 
-            // Validate token with backend for standalone mode
+            // For standalone mode, we trust the token and decode user info from it
+            // Note: There's no validate endpoint for standalone mode in the API
             this.jwtToken = token;
-            const response = await this.axiosInstance.get('/standalone/validate');
-            if (!response.data.success || !response.data.data) {
-                throw CreditError.authenticationFailed('Invalid token');
-            }
-            const user = response.data.data.user;
+            const user = payload.user || { id: payload.sub, email: payload.email };
             this.setToken(token, expiresAt, user);
-            logger.info('Token authentication successful', { userId: user.id });
+            logger.info('Token authentication successful (standalone mode)', { userId: user.id });
             return user;
         }
         catch (error) {
@@ -315,26 +312,10 @@ export class AuthManager {
         if (!this.jwtToken) {
             throw CreditError.authenticationFailed('No token to refresh');
         }
-        try {
-            const response = await this.axiosInstance.post('/standalone/refresh-token');
-            if (!response.data.success || !response.data.data) {
-                throw CreditError.authenticationFailed('Token refresh failed');
-            }
-            const { token, expires_at } = response.data.data;
-            this.jwtToken = token;
-            this.tokenExpiresAt = new Date(expires_at);
-            this.scheduleTokenRefresh();
-            logger.info('Token refreshed successfully');
-            if (this.config.onTokenExpired) {
-                this.config.onTokenExpired();
-            }
-        }
-        catch (error) {
-            if (error.response?.status === 401) {
-                throw CreditError.tokenExpired();
-            }
-            throw CreditError.networkError(error);
-        }
+        // Note: There's no refresh-token endpoint for standalone mode in the API
+        // The application should handle re-authentication when token expires
+        logger.warn('Token refresh not available for standalone mode. Please re-authenticate.');
+        throw CreditError.tokenExpired();
     }
     handleTokenExpiry() {
         this.jwtToken = null;

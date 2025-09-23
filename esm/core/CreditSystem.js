@@ -22,7 +22,7 @@ export class CreditSystem {
         console.log('[SDK-CreditSystem] Normalized config:', this.config);
 
         this.authManager = new AuthManager(this.config);
-        this.apiClient = new ApiClient(this.authManager.getAxiosInstance(), this.config.parentOrigin);
+        this.apiClient = new ApiClient(this.authManager.getAxiosInstance(), this.config.parentOrigin, this.config.authMode);
         this.setupEventListeners();
         this.setupErrorHandler();
 
