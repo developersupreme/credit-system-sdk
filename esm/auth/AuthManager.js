@@ -293,31 +293,66 @@ export class AuthManager {
             clearTimeout(this.refreshTimer);
         }
         if (!this.tokenExpiresAt) {
+            console.log('[TOKEN-REFRESH] No token expiry date, skipping refresh scheduling');
             return;
         }
         const bufferTime = this.config.tokenRefreshBuffer || 60000; // Default 1 minute
         const timeUntilExpiry = this.tokenExpiresAt.getTime() - Date.now();
         const refreshTime = Math.max(0, timeUntilExpiry - bufferTime);
+
+        console.log('[TOKEN-REFRESH] Token refresh scheduling details:', {
+            authMode: this.config.authMode,
+            tokenExpiresAt: this.tokenExpiresAt.toISOString(),
+            currentTime: new Date().toISOString(),
+            timeUntilExpiry: Math.round(timeUntilExpiry / 1000) + ' seconds',
+            bufferTime: bufferTime / 1000 + ' seconds',
+            refreshScheduledIn: Math.round(refreshTime / 1000) + ' seconds'
+        });
+
         if (refreshTime > 0) {
             this.refreshTimer = setTimeout(() => {
+                console.log('[TOKEN-REFRESH] Attempting to refresh token now...');
                 this.refreshToken().catch((error) => {
+                    console.error('[TOKEN-REFRESH] Token refresh failed:', error.message);
                     logger.error('Token refresh failed:', error);
                     this.handleTokenExpiry();
                 });
             }, refreshTime);
+            console.log(`[TOKEN-REFRESH] Token refresh scheduled successfully, will refresh in ${Math.round(refreshTime / 1000)} seconds`);
             logger.debug(`Token refresh scheduled in ${refreshTime}ms`);
+        } else {
+            console.log('[TOKEN-REFRESH] Token already expired or about to expire, triggering immediate refresh');
+            this.refreshToken().catch((error) => {
+                console.error('[TOKEN-REFRESH] Immediate token refresh failed:', error.message);
+                this.handleTokenExpiry();
+            });
         }
     }
     async refreshToken() {
+        console.log('[TOKEN-REFRESH] refreshToken() called in standalone mode');
+        console.log('[TOKEN-REFRESH] Current auth mode:', this.config.authMode);
+
         if (!this.jwtToken) {
+            console.error('[TOKEN-REFRESH] No token to refresh');
             throw CreditError.authenticationFailed('No token to refresh');
         }
+
         // Note: There's no refresh-token endpoint for standalone mode in the API
         // The application should handle re-authentication when token expires
+        console.warn('[TOKEN-REFRESH] Token refresh not available for standalone mode. User needs to re-authenticate.');
+        console.log('[TOKEN-REFRESH] Token expiry details:', {
+            tokenExpiresAt: this.tokenExpiresAt?.toISOString(),
+            currentTime: new Date().toISOString(),
+            isExpired: this.tokenExpiresAt ? this.tokenExpiresAt < new Date() : true
+        });
+
         logger.warn('Token refresh not available for standalone mode. Please re-authenticate.');
         throw CreditError.tokenExpired();
     }
     handleTokenExpiry() {
+        console.log('[TOKEN-REFRESH] handleTokenExpiry() called - Token has expired');
+        console.log('[TOKEN-REFRESH] Clearing authentication state');
+
         this.jwtToken = null;
         this.tokenExpiresAt = null;
         this.user = null;
@@ -326,9 +361,11 @@ export class AuthManager {
             this.refreshTimer = null;
         }
         if (this.config.onTokenExpired) {
+            console.log('[TOKEN-REFRESH] Calling onTokenExpired callback');
             this.config.onTokenExpired();
         }
         logger.warn('Session expired');
+        console.warn('[TOKEN-REFRESH] Session expired - User needs to login again');
     }
     logout() {
         this.handleTokenExpiry();
