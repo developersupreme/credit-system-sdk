@@ -150,10 +150,12 @@ class CreditSystem {
 
         try {
             console.log('[SDK-CreditSystem] Calling authManager.init()...');
+
+            // Mark as initialized BEFORE authManager.init() so that event handlers can use SDK methods
+            this.initialized = true;
+
             await this.authManager.init();
             console.log('[SDK-CreditSystem] authManager.init() completed');
-
-            this.initialized = true;
 
             // Check authentication status
             const isAuth = this.authManager.isAuthenticated();
@@ -180,6 +182,8 @@ class CreditSystem {
         }
         catch (error) {
             console.error('[SDK-CreditSystem] Initialization failed:', error);
+            // Reset initialized flag if init fails
+            this.initialized = false;
             this.handleError(error);
             throw error;
         }
