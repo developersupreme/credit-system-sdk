@@ -91,6 +91,7 @@ class AuthManager {
 
     async initIframeAuth() {
         console.log('[SDK-AuthManager] initIframeAuth() started');
+        console.log('[SDK-AuthManager] MessageType.REQUEST_CREDENTIALS =', types_1.MessageType.REQUEST_CREDENTIALS);
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 console.error('[SDK-AuthManager] TIMEOUT: No response from parent after 10 seconds');
@@ -135,12 +136,34 @@ class AuthManager {
             // Request credentials from parent
             const targetOrigin = this.config.parentOrigin || '*';
             const requestMessage = {
-                type: types_1.MessageType.REQUEST_CREDENTIALS,
+                type: types_1.MessageType.REQUEST_CREDENTIALS || 'REQUEST_CREDENTIALS',
                 source: 'credit-system-sdk'
             };
 
-            console.log('[SDK-AuthManager] Sending credential request to parent');
-            window.parent.postMessage(requestMessage, targetOrigin);
+            console.log('[SDK-AuthManager] Sending credential request to parent:', {
+                targetOrigin,
+                messageType: requestMessage.type,
+                parentWindow: window.parent,
+                isParentSameAsWindow: window.parent === window,
+                currentOrigin: window.location.origin
+            });
+
+            // Send multiple attempts with different origins to ensure delivery
+            try {
+                // Try with configured origin
+                window.parent.postMessage(requestMessage, targetOrigin);
+                console.log('[SDK-AuthManager] Message sent to parent with targetOrigin:', targetOrigin);
+
+                // Also try with wildcard for debugging
+                if (targetOrigin !== '*') {
+                    setTimeout(() => {
+                        window.parent.postMessage(requestMessage, '*');
+                        console.log('[SDK-AuthManager] Also sent with wildcard origin for debugging');
+                    }, 100);
+                }
+            } catch (err) {
+                console.error('[SDK-AuthManager] Failed to send message to parent:', err);
+            }
         });
     }
     async authenticate(credentials) {
