@@ -138,8 +138,9 @@ export class AuthManager {
                     hasToken: !!event.data?.token
                 });
 
-                // If parentOrigin is not set, accept from any origin (less secure but more flexible)
-                if (this.config.parentOrigin && event.origin !== this.config.parentOrigin) {
+                // If parentOrigin is set, validate it
+                if (this.config.parentOrigin && this.config.parentOrigin !== '*' && event.origin !== this.config.parentOrigin) {
+                    console.log('[SDK-AuthManager] Ignored message from unauthorized origin:', event.origin, 'expected:', this.config.parentOrigin);
                     logger.warn('Ignored message from unauthorized origin:', event.origin);
                     return;
                 }

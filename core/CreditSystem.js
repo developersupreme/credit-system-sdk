@@ -61,11 +61,27 @@ class CreditSystem {
         if (typeof window === 'undefined') {
             return;
         }
-        // Listen for messages from iframe parent
+        // Listen for messages from iframe parent (only for non-auth messages)
         window.addEventListener('message', (event) => {
-            if (this.config.parentOrigin && event.origin !== this.config.parentOrigin) {
+            console.log('[SDK-CreditSystem] Message received in setupEventListeners:', {
+                origin: event.origin,
+                type: event.data?.type,
+                expectedOrigin: this.config.parentOrigin
+            });
+
+            // Skip auth-related messages - these are handled by AuthManager
+            if (event.data && (event.data.type === 'JWT_TOKEN' ||
+                              event.data.type === 'REQUEST_CREDENTIALS' ||
+                              event.data.type === 'AUTHENTICATION_ERROR')) {
+                console.log('[SDK-CreditSystem] Skipping auth message - handled by AuthManager');
                 return;
             }
+
+            if (this.config.parentOrigin && this.config.parentOrigin !== '*' && event.origin !== this.config.parentOrigin) {
+                console.log('[SDK-CreditSystem] Ignored non-auth message from unauthorized origin:', event.origin);
+                return;
+            }
+
             const message = event.data;
             this.handleIframeMessage(message);
         });
